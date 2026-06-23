@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: scilip-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      POSTGRES_DB: ${POSTGRES_DB:-scilipdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    image: node:20-alpine
+    container_name: scilip-api-dev
+    restart: unless-stopped
+    depends_on:
+      - db
+    # Set the working directory to the root of the monorepo
+    working_dir: /usr/src/app
+    # Mount the local project to the container for hot reload
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-admin}@db:5432/${POSTGRES_DB:-scilipdb}?schema=public
+    # Command installs dependencies, generates prisma client, and starts the API in dev mode
+    command: >
+      sh -c "npm install -g pnpm && pnpm install && npx prisma generate --schema=./packages/database/prisma/schema.prisma && pnpm --filter api dev"
+
+  web:
+    image: node:20-alpine
+    container_name: scilip-web-dev
+    restart: unless-stopped
+    depends_on:
+      - api
+    working_dir: /usr/src/app
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    command: >
+      sh -c "npm install -g pnpm && pnpm install && pnpm --filter web dev"
+
+volumes:
+  pgdata:

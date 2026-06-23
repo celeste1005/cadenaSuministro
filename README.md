@@ -82,3 +82,26 @@ Este proyecto está organizado como un **monorepo** gestionado con `pnpm` y `tur
   * [eslint-config](file:///c:/Users/Anthony%20Garcia/CadenaProyecto/cadenaSuministro/packages/eslint-config) - Reglas de linting del proyecto.
 
 Consulte el archivo [KPI_ANALYSIS.md](file:///c:/Users/Anthony%20Garcia/CadenaProyecto/cadenaSuministro/KPI_ANALYSIS.md) para ver la lista completa y fórmulas de los 28 indicadores de gestión logística e ingeniería clasificados por categorías.
+
+---
+
+## 9. Desarrollo Local con Docker
+SCILIP cuenta con un ecosistema preconfigurado para levantar toda la aplicación sin instalar dependencias locales en su máquina (solo necesita Docker Desktop).
+
+Ejecute el siguiente comando en la raíz del proyecto:
+```bash
+docker compose up -d
+```
+Esto levantará tres contenedores:
+- Base de datos PostgreSQL (puerto 5432)
+- API NestJS (puerto 4000)
+- Web Next.js (puerto 3000)
+
+*Nota: Cualquier cambio guardado en su editor se aplicará en tiempo real gracias a los volúmenes montados.*
+
+---
+
+## 10. Documentación Técnica y Progreso
+Para mayores detalles técnicos acerca de cómo está programado el backend, los pipelines de CI/CD, Swagger o el Testing, por favor refiérase a:
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)**: Manual y patrones de diseño técnico del sistema.
+- **[CHANGELOG.md](./CHANGELOG.md)**: Historial completo de versiones y modificaciones realizadas al código base.

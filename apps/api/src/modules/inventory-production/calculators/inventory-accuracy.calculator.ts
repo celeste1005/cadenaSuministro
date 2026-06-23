@@ -93,7 +93,9 @@ export class InventoryAccuracyCalculator {
       return acc;
     }, {} as Record<number, { totalDifference: number; totalInventoryValue: number }>);
 
-    return Object.entries(grouped).map(([month, data]) => {
+    return Object.entries(grouped).map((entry) => {
+      const month = entry[0];
+      const data = entry[1] as { totalDifference: number; totalInventoryValue: number };
       const accuracyPercentage = data.totalInventoryValue > 0 
         ? (data.totalDifference / data.totalInventoryValue) * 100 
         : 0;
