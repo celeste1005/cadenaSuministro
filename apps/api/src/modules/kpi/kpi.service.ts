@@ -37,6 +37,31 @@ export class KpiService {
       return;
     }
 
+    // Buscar el valor del mes anterior para calcular la varianza
+    const previousPeriodDate = new Date(periodDate);
+    previousPeriodDate.setMonth(previousPeriodDate.getMonth() - 1);
+    
+    const previousValueRecord = await this.prisma.kpiValue.findFirst({
+      where: {
+        kpiId: kpiDef.id,
+        companyId,
+        branchId: branchId || null,
+        periodDate: previousPeriodDate,
+      },
+    });
+
+    const previousValueNum = previousValueRecord?.actualValue ? Number(previousValueRecord.actualValue) : null;
+    let varianceAbsolute = 0;
+    let variancePercentage = null;
+
+    if (previousValueNum !== null && previousValueNum !== 0) {
+      varianceAbsolute = value - previousValueNum;
+      variancePercentage = (varianceAbsolute / Math.abs(previousValueNum)) * 100;
+    } else if (previousValueNum === 0 && value !== 0) {
+      varianceAbsolute = value;
+      variancePercentage = 100;
+    }
+
     const kpiValue = await this.prisma.kpiValue.upsert({
       where: {
         kpiId_companyId_periodDate_branchId: {
@@ -48,6 +73,9 @@ export class KpiService {
       },
       update: {
         actualValue: value,
+        previousValue: previousValueNum,
+        varianceAbsolute,
+        variancePercentage,
         calculatedAt: new Date(),
       },
       create: {
@@ -56,7 +84,9 @@ export class KpiService {
         periodDate,
         branchId: branchId || null,
         actualValue: value,
-        varianceAbsolute: 0, // Cálculo de varianza omitido por brevedad
+        previousValue: previousValueNum,
+        varianceAbsolute,
+        variancePercentage,
       },
     });
 
