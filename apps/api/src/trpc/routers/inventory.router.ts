@@ -35,6 +35,12 @@ export const inventoryRouter = router({
       return ctx.warehousingService.getWarehouses(ctx.user.companyId);
     }),
 
+  // Obtener máquinas
+  getMachines: protectedProcedure
+    .query(async ({ ctx }) => {
+      return ctx.inventoryService.getMachines(ctx.user.companyId);
+    }),
+
   // Obtener movimientos
   getMovements: protectedProcedure
     .input(z.object({

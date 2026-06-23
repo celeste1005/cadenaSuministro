@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Button,
   Dialog,
@@ -15,6 +15,11 @@ import {
 } from '@tremor/react';
 import { PlusCircle, X } from 'lucide-react';
 import { trpc } from '@/lib/trpc/react';
+import { Can, Action } from '@/components/auth/can';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { inventoryMovementSchema, type InventoryMovementFormData } from '@/lib/validations/schemas';
 
 interface MovementModalProps {
   isOpen: boolean;
@@ -23,32 +28,43 @@ interface MovementModalProps {
 }
 
 export function MovementModal({ isOpen, onClose, onSuccess }: MovementModalProps) {
-  const [formData, setFormData] = useState({
-    productId: '',
-    warehouseId: '', 
-    type: 'IN' as 'IN' | 'OUT' | 'ADJUSTMENT' | 'TRANSFER',
-    quantity: 0,
-    reference: '',
-    notes: '',
-  });
-
+  const { can } = useAuth();
   const { data: products } = trpc.inventory.getProducts.useQuery();
   const { data: warehouses } = trpc.inventory.getWarehouses.useQuery();
-  
+
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+    reset,
+  } = useForm<InventoryMovementFormData>({
+    resolver: zodResolver(inventoryMovementSchema),
+    defaultValues: {
+      productId: '',
+      warehouseId: '', 
+      type: 'IN',
+      quantity: 0,
+      reference: '',
+      notes: '',
+    },
+  });
+
   // Update warehouseId once warehouses are loaded
   React.useEffect(() => {
-    if (warehouses && warehouses.length > 0 && !formData.warehouseId) {
-      setFormData(prev => ({ ...prev, warehouseId: warehouses[0].id }));
+    if (warehouses && warehouses.length > 0 && !watch('warehouseId')) {
+      setValue('warehouseId', warehouses[0].id);
     }
-  }, [warehouses, formData.warehouseId]);
+  }, [warehouses, setValue, watch]);
 
   const createMovement = trpc.inventory.createMovement.useMutation({
     onSuccess: () => {
       onSuccess();
       onClose();
-      setFormData({
+      reset({
         productId: '',
-        warehouseId: '8097d848-3563-4702-8924-d2e5352f2059',
+        warehouseId: warehouses?.[0]?.id || '',
         type: 'IN',
         quantity: 0,
         reference: '',
@@ -57,30 +73,28 @@ export function MovementModal({ isOpen, onClose, onSuccess }: MovementModalProps
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.productId || formData.quantity <= 0) return;
-    
+  const onSubmit = (data: InventoryMovementFormData) => {
     createMovement.mutate({
-      ...formData,
-      quantity: Number(formData.quantity),
+      ...data,
+      quantity: Number(data.quantity),
     });
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} static={true}>
-      <DialogPanel className="max-w-md">
+    <Dialog open={isOpen} onClose={onClose} static={true} className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <DialogPanel className="relative z-10 max-w-md w-full max-h-[90vh] overflow-y-auto bg-white rounded-kpi shadow-kpi p-6">
         <Flex justifyContent="between" alignItems="center">
-          <Title>Registrar Movimiento</Title>
-          <Button variant="light" icon={X} onClick={onClose} />
+          <Title className="text-xl font-bold text-gray-900">Registrar Movimiento</Title>
+          <Button variant="light" icon={X} onClick={onClose} className="hover:bg-gray-100" />
         </Flex>
         
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleFormSubmit(onSubmit)} className="mt-6 space-y-4">
           <div>
             <Text className="mb-1">Producto</Text>
             <Select 
-              value={formData.productId} 
-              onValueChange={(val) => setFormData({ ...formData, productId: val })}
+              value={watch('productId')} 
+              onValueChange={(val) => setValue('productId', val)}
               placeholder="Seleccionar producto..."
             >
               {products?.map((p) => (
@@ -89,13 +103,16 @@ export function MovementModal({ isOpen, onClose, onSuccess }: MovementModalProps
                 </SelectItem>
               ))}
             </Select>
+            {errors.productId && (
+              <Text className="text-red-500 text-sm mt-1">{errors.productId.message}</Text>
+            )}
           </div>
 
           <div>
             <Text className="mb-1">Bodega</Text>
             <Select 
-              value={formData.warehouseId} 
-              onValueChange={(val) => setFormData({ ...formData, warehouseId: val })}
+              value={watch('warehouseId')} 
+              onValueChange={(val) => setValue('warehouseId', val)}
               placeholder="Seleccionar bodega..."
             >
               {warehouses?.map((w) => (
@@ -104,28 +121,37 @@ export function MovementModal({ isOpen, onClose, onSuccess }: MovementModalProps
                 </SelectItem>
               ))}
             </Select>
+            {errors.warehouseId && (
+              <Text className="text-red-500 text-sm mt-1">{errors.warehouseId.message}</Text>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Text className="mb-1">Tipo</Text>
               <Select 
-                value={formData.type} 
-                onValueChange={(val: any) => setFormData({ ...formData, type: val })}
+                value={watch('type')} 
+                onValueChange={(val: any) => setValue('type', val)}
               >
                 <SelectItem value="IN">Entrada (+)</SelectItem>
                 <SelectItem value="OUT">Salida (-)</SelectItem>
                 <SelectItem value="ADJUSTMENT">Ajuste</SelectItem>
                 <SelectItem value="TRANSFER">Traslado</SelectItem>
               </Select>
+              {errors.type && (
+                <Text className="text-red-500 text-sm mt-1">{errors.type.message}</Text>
+              )}
             </div>
             <div>
               <Text className="mb-1">Cantidad</Text>
               <NumberInput 
-                value={formData.quantity} 
-                onValueChange={(val) => setFormData({ ...formData, quantity: val })}
+                value={watch('quantity')} 
+                onValueChange={(val) => setValue('quantity', val)}
                 min={1}
               />
+              {errors.quantity && (
+                <Text className="text-red-500 text-sm mt-1">{errors.quantity.message}</Text>
+              )}
             </div>
           </div>
 
@@ -133,8 +159,7 @@ export function MovementModal({ isOpen, onClose, onSuccess }: MovementModalProps
             <Text className="mb-1">Referencia / Documento</Text>
             <TextInput 
               placeholder="Ej: OC-123, Factura 45..." 
-              value={formData.reference}
-              onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+              {...register('reference')}
             />
           </div>
 
@@ -142,8 +167,7 @@ export function MovementModal({ isOpen, onClose, onSuccess }: MovementModalProps
             <Text className="mb-1">Notas</Text>
             <TextInput 
               placeholder="Observaciones adicionales" 
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              {...register('notes')}
             />
           </div>
 
@@ -151,13 +175,19 @@ export function MovementModal({ isOpen, onClose, onSuccess }: MovementModalProps
             <Button variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button 
-              loading={createMovement.isPending} 
-              icon={PlusCircle}
-              type="submit"
-            >
-              Confirmar
-            </Button>
+            <Can action={Action.Create} subject="InventoryMovement" fallback={
+              <Button disabled color="gray">
+                Sin permisos
+              </Button>
+            }>
+              <Button 
+                loading={createMovement.isPending} 
+                icon={PlusCircle}
+                type="submit"
+              >
+                Confirmar
+              </Button>
+            </Can>
           </div>
         </form>
       </DialogPanel>

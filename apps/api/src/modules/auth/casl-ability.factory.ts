@@ -1,6 +1,6 @@
 import { Ability, AbilityBuilder, AbilityClass, ExtractSubjectType, InferSubjects } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
-import { User, Role } from '@project/database/src/generated/client';
+import { User, Role } from '@prisma/client';
 
 export enum Action {
   Manage = 'manage',

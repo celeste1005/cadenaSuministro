@@ -1,5 +1,6 @@
 import React from 'react';
 import { Providers } from '../components/providers/trpc-provider';
+import { ErrorBoundary } from '../components/error/error-boundary';
 import '../styles/globals.css';
 
 export const metadata = {
@@ -13,9 +14,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body>
-        <Providers>{children}</Providers>
+        <ErrorBoundary>
+          <Providers>{children}</Providers>
+        </ErrorBoundary>
       </body>
     </html>
   );

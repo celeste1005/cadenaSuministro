@@ -15,6 +15,8 @@ import { KpiModule } from './modules/kpi/kpi.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { TrpcModule } from './trpc/trpc.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 
 @Module({
   imports: [
@@ -38,6 +40,12 @@ import { TrpcModule } from './trpc/trpc.module';
     ReportsModule,
     KpiModule,
     TrpcModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
   ],
 })
 export class AppModule {}

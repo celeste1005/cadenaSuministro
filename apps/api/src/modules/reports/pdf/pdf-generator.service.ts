@@ -38,30 +38,45 @@ import { Injectable, Logger } from '@nestjs/common';
      ); 
       
      // 2. Registrar helpers de Handlebars 
-     Handlebars.registerHelper('formatCurrency', (value: number) => { 
-       return new Intl.NumberFormat('es-CO', { 
-         style: 'currency', 
-         currency: 'COP', 
-         minimumFractionDigits: 0, 
-       }).format(value); 
-     }); 
+     if (!Handlebars.helpers.formatCurrency) {
+       Handlebars.registerHelper('formatCurrency', (value: number) => { 
+         return new Intl.NumberFormat('es-CO', { 
+           style: 'currency', 
+           currency: 'COP', 
+           minimumFractionDigits: 0, 
+         }).format(value); 
+       }); 
+     }
       
-     Handlebars.registerHelper('formatPercentage', (value: number) => { 
-       return `${value.toFixed(1)}%`; 
-     }); 
+     if (!Handlebars.helpers.formatPercentage) {
+       Handlebars.registerHelper('formatPercentage', (value: number) => { 
+         return `${value.toFixed(1)}%`; 
+       }); 
+     }
       
-     Handlebars.registerHelper('getTrendIcon', (trend: string) => { 
-       if (trend === 'up') return '📈'; 
-       if (trend === 'down') return '📉'; 
-       return '➡️'; 
-     }); 
+     if (!Handlebars.helpers.getTrendIcon) {
+       Handlebars.registerHelper('getTrendIcon', (trend: string) => { 
+         if (trend === 'up') return '📈'; 
+         if (trend === 'down') return '📉'; 
+         return '➡️'; 
+       }); 
+     }
       
-     Handlebars.registerHelper('getTrendColor', (trend: string) => { 
-       if (trend === 'up') return '#ef4444'; // red 
-       if (trend === 'down') return '#10b981'; // green 
-       return '#6b7280'; // gray 
-     }); 
-      
+     if (!Handlebars.helpers.getTrendColor) {
+       Handlebars.registerHelper('getTrendColor', (trend: string) => { 
+         if (trend === 'up') return '#ef4444'; // red 
+         if (trend === 'down') return '#10b981'; // green 
+         return '#6b7280'; // gray 
+       }); 
+     }
+
+     if (!Handlebars.helpers.eq) {
+       Handlebars.registerHelper('eq', (a, b) => a === b);
+     }
+
+     if (!Handlebars.helpers.gt) {
+       Handlebars.registerHelper('gt', (a, b) => a > b);
+     }      
      // 3. Compilar template 
      const template = Handlebars.compile(templateHtml); 
       

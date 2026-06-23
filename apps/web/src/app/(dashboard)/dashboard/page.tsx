@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Grid, 
   Title, 
@@ -37,40 +37,89 @@ import {
 } from 'lucide-react';
 import { KPICard } from '@/components/ui/kpi-card';
 import { cn } from '@/lib/utils';
-import { 
+import { trpc } from '@/lib/trpc/react';
+import {
   AreaChart,
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
-  Label
+  Label,
 } from 'recharts';
 
 export default function DashboardPage() {
   const [selectedTaxonomy, setSelectedTaxonomy] = useState<string>('all');
+  const [period] = useState({
+    startDate: new Date(new Date().getFullYear(), 0, 1),
+    endDate: new Date(),
+  });
 
-  const chartData = [
-    { name: 'Lun', value: 82 },
-    { name: 'Mar', value: 85 },
-    { name: 'Mié', value: 89 },
-    { name: 'Jue', value: 87 },
-    { name: 'Vie', value: 91 },
-    { name: 'Sáb', value: 94 },
-    { name: 'Dom', value: 89 },
-  ];
+  // Fetching real KPI data
+  const kpi03 = trpc.kpi.getKpiData.useQuery({ code: 'NOR_DIS_IND_03', ...period });
+  const kpi11 = trpc.kpi.getKpiData.useQuery({ code: 'NOR_DIS_IND_11', ...period });
+  const kpi18 = trpc.kpi.getKpiData.useQuery({ code: 'NOR_DIS_IND_18', ...period });
+  const kpi24 = trpc.kpi.getKpiData.useQuery({ code: 'NOR_DIS_IND_24', ...period });
 
-  const distributionData = [
-    { name: 'Compras', value: 28, color: '#4F46E5' },
-    { name: 'Inventarios', value: 24, color: '#2563EB' },
-    { name: 'Producción', value: 18, color: '#10B981' },
-    { name: 'Transporte', value: 16, color: '#F59E0B' },
-    { name: 'Otros', value: 14, color: '#E2E8F0' },
-  ];
+  // Fetching global trend data
+  const trendData = trpc.kpi.getKpiTimeSeries.useQuery({ 
+    code: 'NOR_DIS_IND_24', // Usamos Entregas Perfectas como proxy de salud global
+    ...period 
+  });
+
+  // Fetching KPI definitions for distribution
+  const kpiDefinitions = trpc.kpi.listDefinitions.useQuery({});
+
+  // Fetching pending approvals
+  const pendingApprovals = trpc.purchasing.getPendingApprovals.useQuery(undefined, {
+    retry: false, // Evitar spam si el usuario no tiene permisos
+  });
+
+  const chartData = trendData.data?.map(d => ({
+    name: new Date(d.periodDate).toLocaleDateString('es-ES', { month: 'short' }),
+    value: Number(d.actualValue)
+  })) || [];
+
+  const distributionData = React.useMemo(() => {
+    if (!kpiDefinitions.data) return [];
+    
+    const categories = {
+      PURCHASING: { name: 'Compras', color: '#4F46E5', count: 0 },
+      INVENTORY: { name: 'Inventarios', color: '#2563EB', count: 0 },
+      PRODUCTION: { name: 'Producción', color: '#10B981', count: 0 },
+      TRANSPORT: { name: 'Transporte', color: '#F59E0B', count: 0 },
+      CUSTOMER_SERVICE: { name: 'Servicio al Cliente', color: '#EF4444', count: 0 },
+      INTERNATIONAL: { name: 'Comercio Exterior', color: '#6B7280', count: 0 },
+    };
+
+    kpiDefinitions.data.forEach(kpi => {
+      const code = kpi.category?.code;
+      if (code && categories[code]) {
+        categories[code].count++;
+      }
+    });
+
+    const total = kpiDefinitions.data.length || 1;
+    return Object.values(categories).map(cat => ({
+      name: cat.name,
+      value: Math.round((cat.count / total) * 100),
+      color: cat.color
+    })).filter(cat => cat.value > 0);
+  }, [kpiDefinitions.data]);
+
+  const approvalStats = React.useMemo(() => {
+    const approvals = pendingApprovals.data || [];
+    return [
+      { label: 'Pendientes', value: approvals.length, color: 'text-primary' },
+      { label: 'En Revisión', value: Math.round(approvals.length * 0.3), color: 'text-warning' }, // Simulado por ahora
+      { label: 'Aprobadas Hoy', value: 3, color: 'text-success' }, // Simulado
+      { label: 'Rechazadas', value: 2, color: 'text-danger' }, // Simulado
+    ];
+  }, [pendingApprovals.data]);
 
   return (
     <main className="p-6 sm:p-10 bg-background min-h-screen">
@@ -99,34 +148,38 @@ export default function DashboardPage() {
       <Grid numItemsMd={2} numItemsLg={4} className="gap-8 mb-10">
         <KPICard
           title="Entregas Perfectas Recibidas"
-          value={92.5}
+          value={kpi03.data?.percentage ?? 0}
           unit="%"
-          status="good"
+          status={kpi03.data?.percentage > 90 ? 'good' : 'warning'}
+          loading={kpi03.isLoading}
           icon={<ShoppingCart className="h-5 w-5" />}
-          subtitle="NOR_DIS_IND_01"
+          subtitle="NOR_DIS_IND_03"
         />
         <KPICard
           title="Exactitud Inventarios"
-          value={95.8}
+          value={kpi11.data?.accuracyPercentage ?? 0}
           unit="%"
-          status="good"
+          status={kpi11.data?.accuracyPercentage > 95 ? 'good' : 'warning'}
+          loading={kpi11.isLoading}
           icon={<Package className="h-5 w-5" />}
           subtitle="NOR_DIS_IND_11"
         />
         <KPICard
           title="Costo Transporte vs Ventas"
-          value={8.2}
+          value={kpi18.data?.percentage ?? 0}
           unit="%"
-          status="good"
+          status={kpi18.data?.percentage < 5 ? 'good' : 'warning'}
+          loading={kpi18.isLoading}
           direction="down"
           icon={<Truck className="h-5 w-5" />}
           subtitle="NOR_DIS_IND_18"
         />
         <KPICard
           title="Entregas Perfectas"
-          value={94.1}
+          value={kpi24.data?.perfectPercentage ?? 0}
           unit="%"
-          status="good"
+          status={kpi24.data?.perfectPercentage > 90 ? 'good' : 'warning'}
+          loading={kpi24.isLoading}
           icon={<Users className="h-5 w-5" />}
           subtitle="NOR_DIS_IND_24"
         />

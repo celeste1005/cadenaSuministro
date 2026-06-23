@@ -40,11 +40,14 @@ export class CustomerServiceService {
   }
 
   async createDispatch(companyId: string, data: any) {
-    const { lines, ...dispatchData } = data;
+    const { lines, customerId, orderReference, promisedDate, ...dispatchData } = data;
     return this.prisma.dispatch.create({
       data: {
         ...dispatchData,
         companyId,
+        dispatchNumber: orderReference,
+        customerId,
+        promisedDate,
         lines: {
           create: lines.map((line: any) => ({
             productId: line.productId,

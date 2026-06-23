@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Button,
   Dialog,
@@ -16,7 +16,11 @@ import {
 } from '@tremor/react';
 import { DollarSign, X } from 'lucide-react';
 import { trpc } from '@/lib/trpc/react';
-import { es } from 'date-fns/locale';
+import { Can, Action } from '@/components/auth/can';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { operationalCostSchema, type OperationalCostFormData } from '@/lib/validations/schemas';
 
 interface OperationalCostModalProps {
   isOpen: boolean;
@@ -34,30 +38,41 @@ const COST_TYPES = [
 ];
 
 export function OperationalCostModal({ isOpen, onClose, onSuccess }: OperationalCostModalProps) {
-  const [formData, setFormData] = useState({
-    warehouseId: '',
-    costType: '',
-    amount: 0,
-    costDate: new Date(),
-    description: '',
-  });
-
+  const { can } = useAuth();
   const { data: warehouses } = trpc.warehousing.getWarehouses.useQuery();
+
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+    reset,
+  } = useForm<OperationalCostFormData>({
+    resolver: zodResolver(operationalCostSchema),
+    defaultValues: {
+      warehouseId: '',
+      costType: undefined,
+      amount: 0,
+      costDate: new Date(),
+      description: '',
+    },
+  });
 
   // Autocompletar warehouseId
   React.useEffect(() => {
-    if (warehouses && warehouses.length > 0 && !formData.warehouseId) {
-      setFormData(prev => ({ ...prev, warehouseId: warehouses[0].id }));
+    if (warehouses && warehouses.length > 0 && !watch('warehouseId')) {
+      setValue('warehouseId', warehouses[0].id);
     }
-  }, [warehouses, formData.warehouseId]);
+  }, [warehouses, setValue, watch]);
 
   const createCost = trpc.warehousing.createOperationalCost.useMutation({
     onSuccess: () => {
       onSuccess();
       onClose();
-      setFormData({
+      reset({
         warehouseId: warehouses?.[0]?.id || '',
-        costType: '',
+        costType: undefined,
         amount: 0,
         costDate: new Date(),
         description: '',
@@ -65,27 +80,25 @@ export function OperationalCostModal({ isOpen, onClose, onSuccess }: Operational
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.warehouseId || !formData.costType || formData.amount <= 0) return;
-
-    createCost.mutate(formData);
+  const onSubmit = (data: OperationalCostFormData) => {
+    createCost.mutate(data);
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} static={true}>
-      <DialogPanel className="max-w-md">
+    <Dialog open={isOpen} onClose={onClose} static={true} className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <DialogPanel className="relative z-10 max-w-md w-full max-h-[90vh] overflow-y-auto bg-white rounded-kpi shadow-kpi p-6">
         <Flex justifyContent="between" alignItems="center">
-          <Title>Registrar Costo Operativo</Title>
-          <Button variant="light" icon={X} onClick={onClose} />
+          <Title className="text-xl font-bold text-gray-900">Registrar Costo Operativo</Title>
+          <Button variant="light" icon={X} onClick={onClose} className="hover:bg-gray-100" />
         </Flex>
         
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleFormSubmit(onSubmit)} className="mt-6 space-y-4">
           <div>
             <Text className="mb-1">Bodega / CEDI</Text>
             <Select 
-              value={formData.warehouseId} 
-              onValueChange={(val) => setFormData({ ...formData, warehouseId: val })}
+              value={watch('warehouseId')} 
+              onValueChange={(val) => setValue('warehouseId', val)}
               placeholder="Seleccionar bodega..."
             >
               {warehouses?.map((w) => (
@@ -94,13 +107,16 @@ export function OperationalCostModal({ isOpen, onClose, onSuccess }: Operational
                 </SelectItem>
               ))}
             </Select>
+            {errors.warehouseId && (
+              <Text className="text-red-500 text-sm mt-1">{errors.warehouseId.message}</Text>
+            )}
           </div>
 
           <div>
             <Text className="mb-1">Tipo de Costo</Text>
             <Select 
-              value={formData.costType} 
-              onValueChange={(val) => setFormData({ ...formData, costType: val })}
+              value={watch('costType')} 
+              onValueChange={(val) => setValue('costType', val as any)}
               placeholder="Seleccionar tipo..."
             >
               {COST_TYPES.map((type) => (
@@ -109,25 +125,33 @@ export function OperationalCostModal({ isOpen, onClose, onSuccess }: Operational
                 </SelectItem>
               ))}
             </Select>
+            {errors.costType && (
+              <Text className="text-red-500 text-sm mt-1">{errors.costType.message}</Text>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Text className="mb-1">Monto (COP)</Text>
               <NumberInput 
-                value={formData.amount} 
-                onValueChange={(val) => setFormData({ ...formData, amount: val })}
+                value={watch('amount')} 
+                onValueChange={(val) => setValue('amount', val)}
                 min={1}
                 icon={DollarSign}
               />
+              {errors.amount && (
+                <Text className="text-red-500 text-sm mt-1">{errors.amount.message}</Text>
+              )}
             </div>
             <div>
               <Text className="mb-1">Fecha</Text>
               <DatePicker
-                value={formData.costDate}
-                onValueChange={(val) => val && setFormData({ ...formData, costDate: val })}
-                locale={es}
+                value={watch('costDate')}
+                onValueChange={(val) => val && setValue('costDate', val)}
               />
+              {errors.costDate && (
+                <Text className="text-red-500 text-sm mt-1">{errors.costDate.message}</Text>
+              )}
             </div>
           </div>
 
@@ -135,8 +159,7 @@ export function OperationalCostModal({ isOpen, onClose, onSuccess }: Operational
             <Text className="mb-1">Descripción</Text>
             <TextInput 
               placeholder="Detalles adicionales del gasto..." 
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              {...register('description')}
             />
           </div>
 
@@ -144,14 +167,20 @@ export function OperationalCostModal({ isOpen, onClose, onSuccess }: Operational
             <Button variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button 
-              loading={createCost.isPending} 
-              icon={DollarSign}
-              type="submit"
-              color="blue"
-            >
-              Guardar Costo
-            </Button>
+            <Can action={Action.Create} subject="OperationalCost" fallback={
+              <Button disabled color="gray">
+                Sin permisos
+              </Button>
+            }>
+              <Button 
+                loading={createCost.isPending} 
+                icon={DollarSign}
+                type="submit"
+                color="blue"
+              >
+                Guardar Costo
+              </Button>
+            </Can>
           </div>
         </form>
       </DialogPanel>

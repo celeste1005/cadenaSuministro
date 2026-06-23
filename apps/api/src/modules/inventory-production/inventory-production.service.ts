@@ -28,7 +28,13 @@ export class InventoryProductionService {
   async getProducts(companyId: string) {
     return this.prisma.product.findMany({
       where: { companyId, isActive: true },
-      include: { category: true },
+    });
+  }
+
+  // --- CRUD Machines ---
+  async getMachines(companyId: string) {
+    return this.prisma.machine.findMany({
+      where: { companyId, status: 'operational' },
     });
   }
 
@@ -73,9 +79,9 @@ export class InventoryProductionService {
       include: {
         product: true,
         warehouse: true,
-        countedBy: true,
+        counter: true,
       },
-      orderBy: { countDate: 'desc' },
+      orderBy: { inventoryDate: 'desc' },
     });
   }
 

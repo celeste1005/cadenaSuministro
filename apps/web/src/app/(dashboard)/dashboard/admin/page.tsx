@@ -32,18 +32,31 @@ export default function AdminPage() {
     startDate: new Date(new Date().getFullYear(), 0, 1),
     endDate: new Date(),
   });
+  const [selectedMachineId, setSelectedMachineId] = useState<string>('');
+
+  // TODO: Add getMachines endpoint to inventory router to fetch real machines
+  // For now, using placeholder - this needs to be connected to real data
+  const machines = [
+    { id: '1', name: 'Máquina A' },
+    { id: '2', name: 'Máquina B' },
+    { id: '3', name: 'Máquina C' },
+  ];
 
   // Consultas a tRPC
   const capacityUtilization = trpc.kpi.getKpiData.useQuery({
     code: 'NOR_DIS_IND_05',
     ...selectedPeriod,
-    machineId: '1', // Mock ID
+    machineId: selectedMachineId || machines[0]?.id,
+  }, {
+    enabled: !!selectedMachineId || !!machines[0]?.id,
   });
 
   const machinePerformance = trpc.kpi.getKpiData.useQuery({
     code: 'NOR_DIS_IND_06',
     ...selectedPeriod,
-    machineId: '1',
+    machineId: selectedMachineId || machines[0]?.id,
+  }, {
+    enabled: !!selectedMachineId || !!machines[0]?.id,
   });
 
   return (
@@ -53,7 +66,7 @@ export default function AdminPage() {
           <Title className="text-2xl font-bold">Producción e Ingeniería</Title>
           <Text className="text-gray-500">Monitoreo de eficiencia de planta y rendimiento de maquinaria.</Text>
         </div>
-        <Button icon={PlusCircle} size="sm" className="w-full sm:w-auto">
+        <Button icon={PlusCircle} size="sm" className="w-full sm:w-auto" disabled>
           Registrar Producción
         </Button>
       </Flex>

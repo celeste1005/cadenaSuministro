@@ -1,31 +1,32 @@
-'use client'; 
+'use client';
 
-import React, { useState } from 'react'; 
-import { Card, Title, Text, Metric, Flex, Grid, AreaChart, Badge } from '@tremor/react'; 
-import { AlertTriangle } from 'lucide-react'; 
+import React, { useState } from 'react';
+import { Card, Title, Text, Metric, Flex, Grid, AreaChart, Badge } from '@tremor/react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { useKPI } from '@/hooks/use-kpi';
 
-export const KPIPerfectReceipts: React.FC = () => { 
-  const [selectedYear, setSelectedYear] = useState<number>(2024); 
+export const KPIPerfectReceipts: React.FC = () => {
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  const kpiData = {
-    period: '2024',
-    totalOrdersReceived: 450,
-    rejectedOrders: 18,
-    rejectedPercentage: 4.0,
+  const startDate = new Date(selectedYear, 0, 1);
+  const endDate = new Date(selectedYear, 11, 31);
+
+  const { data, timeSeries, isLoading, error } = useKPI({
+    code: 'NOR_DIS_IND_03',
+    startDate,
+    endDate,
+  });
+
+  const kpiData = data || {
+    totalOrdersReceived: 0,
+    rejectedOrders: 0,
+    rejectedPercentage: 0,
   };
 
-  const timeSeriesData = [
-    { month: 'Ene', value: 3.5 },
-    { month: 'Feb', value: 4.2 },
-    { month: 'Mar', value: 3.8 },
-    { month: 'Abr', value: 5.0 },
-    { month: 'May', value: 4.0 },
-  ];
-
-  const chartData = timeSeriesData.map(month => ({ 
-    month: month.month, 
-    'Tasa de Rechazo (%)': month.value,
-  })); 
+  const chartData = timeSeries?.map(d => ({
+    month: new Date(d.periodDate).toLocaleDateString('es-ES', { month: 'short' }),
+    'Tasa de Rechazo (%)': Number(d.actualValue),
+  })) || []; 
 
   const getRejectionColor = (percentage: number): string => { 
     if (percentage <= 5) return 'text-emerald-600'; 
@@ -33,8 +34,29 @@ export const KPIPerfectReceipts: React.FC = () => {
     return 'text-red-600'; 
   }; 
 
-  return ( 
-    <div className="p-6 space-y-6"> 
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 space-y-6">
+        <Card className="bg-red-50 border-red-200">
+          <Flex alignItems="center" className="space-x-3">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <Text className="text-red-700">Error al cargar datos del KPI: {error.message}</Text>
+          </Flex>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center"> 
         <div> 
           <Title>Entregas Perfectamente Recibidas</Title> 

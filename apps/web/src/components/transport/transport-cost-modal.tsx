@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Button,
   Dialog,
@@ -16,7 +16,11 @@ import {
 } from '@tremor/react';
 import { Truck, X, DollarSign, MapPin } from 'lucide-react';
 import { trpc } from '@/lib/trpc/react';
-import { es } from 'date-fns/locale';
+import { Can, Action } from '@/components/auth/can';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { transportCostSchema, type TransportCostFormData } from '@/lib/validations/schemas';
 
 interface TransportCostModalProps {
   isOpen: boolean;
@@ -34,68 +38,74 @@ const COST_TYPES = [
 ];
 
 export function TransportCostModal({ isOpen, onClose, onSuccess }: TransportCostModalProps) {
-  const [formData, setFormData] = useState({
-    vehicleId: '',
-    costType: '',
-    amount: 0,
-    costDate: new Date(),
-    description: '',
-    route: '',
-  });
-
+  const { can } = useAuth();
   const { data: vehicles } = trpc.transport.getVehicles.useQuery();
+
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+    reset,
+  } = useForm<TransportCostFormData>({
+    resolver: zodResolver(transportCostSchema),
+    defaultValues: {
+      vehicleId: '',
+      costType: undefined,
+      amount: 0,
+      costDate: new Date(),
+      route: '',
+      description: '',
+    },
+  });
 
   // Autocompletar vehicleId
   React.useEffect(() => {
-    if (vehicles && vehicles.length > 0 && !formData.vehicleId) {
-      setFormData(prev => ({ ...prev, vehicleId: vehicles[0].id }));
+    if (vehicles && vehicles.length > 0 && !watch('vehicleId')) {
+      setValue('vehicleId', vehicles[0].id);
     }
-  }, [vehicles, formData.vehicleId]);
+  }, [vehicles, setValue, watch]);
 
   const createCost = trpc.transport.createTransportCost.useMutation({
     onSuccess: () => {
       onSuccess();
       onClose();
-      setFormData({
+      reset({
         vehicleId: vehicles?.[0]?.id || '',
-        costType: '',
+        costType: undefined,
         amount: 0,
         costDate: new Date(),
-        description: '',
         route: '',
+        description: '',
       });
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.costType || formData.amount <= 0) return;
-
-    createCost.mutate({
-      ...formData,
-      vehicleId: formData.vehicleId || undefined,
-    });
+  const onSubmit = (data: TransportCostFormData) => {
+    createCost.mutate(data);
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} static={true}>
-      <DialogPanel className="max-w-md">
+    <Dialog open={isOpen} onClose={onClose} static={true} className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <DialogPanel className="relative z-10 max-w-md w-full max-h-[90vh] overflow-y-auto bg-white rounded-kpi shadow-kpi p-6">
         <Flex justifyContent="between" alignItems="center">
-          <Title>Registrar Costo de Transporte</Title>
-          <Button variant="light" icon={X} onClick={onClose} />
+          <Title className="text-xl font-bold text-gray-900">Registrar Costo de Transporte</Title>
+          <Button variant="light" icon={X} onClick={onClose} className="hover:bg-gray-100" />
         </Flex>
         
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleFormSubmit(onSubmit)} className="mt-6 space-y-4">
           <div>
             <Text className="mb-1">Vehículo (Opcional)</Text>
             <Select 
-              value={formData.vehicleId} 
-              onValueChange={(val) => setFormData({ ...formData, vehicleId: val })}
+              value={watch('vehicleId')} 
+              onValueChange={(val) => setValue('vehicleId', val)}
               placeholder="Seleccionar vehículo..."
             >
               {vehicles?.map((v) => (
                 <SelectItem key={v.id} value={v.id}>
-                  {v.plate} - {v.model}
+                  {v.plateNumber} - {v.model}
                 </SelectItem>
               ))}
             </Select>
@@ -104,8 +114,8 @@ export function TransportCostModal({ isOpen, onClose, onSuccess }: TransportCost
           <div>
             <Text className="mb-1">Tipo de Gasto</Text>
             <Select 
-              value={formData.costType} 
-              onValueChange={(val) => setFormData({ ...formData, costType: val })}
+              value={watch('costType')} 
+              onValueChange={(val) => setValue('costType', val as any)}
               placeholder="Seleccionar tipo..."
             >
               {COST_TYPES.map((type) => (
@@ -114,25 +124,33 @@ export function TransportCostModal({ isOpen, onClose, onSuccess }: TransportCost
                 </SelectItem>
               ))}
             </Select>
+            {errors.costType && (
+              <Text className="text-red-500 text-sm mt-1">{errors.costType.message}</Text>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Text className="mb-1">Monto (COP)</Text>
               <NumberInput 
-                value={formData.amount} 
-                onValueChange={(val) => setFormData({ ...formData, amount: val })}
+                value={watch('amount')} 
+                onValueChange={(val) => setValue('amount', val)}
                 min={1}
                 icon={DollarSign}
               />
+              {errors.amount && (
+                <Text className="text-red-500 text-sm mt-1">{errors.amount.message}</Text>
+              )}
             </div>
             <div>
               <Text className="mb-1">Fecha</Text>
               <DatePicker
-                value={formData.costDate}
-                onValueChange={(val) => val && setFormData({ ...formData, costDate: val })}
-                locale={es}
+                value={watch('costDate')}
+                onValueChange={(val) => val && setValue('costDate', val)}
               />
+              {errors.costDate && (
+                <Text className="text-red-500 text-sm mt-1">{errors.costDate.message}</Text>
+              )}
             </div>
           </div>
 
@@ -140,8 +158,7 @@ export function TransportCostModal({ isOpen, onClose, onSuccess }: TransportCost
             <Text className="mb-1">Ruta / Trayecto</Text>
             <TextInput 
               placeholder="Ej: Bogotá - Medellín" 
-              value={formData.route}
-              onChange={(e) => setFormData({ ...formData, route: e.target.value })}
+              {...register('route')}
               icon={MapPin}
             />
           </div>
@@ -150,8 +167,7 @@ export function TransportCostModal({ isOpen, onClose, onSuccess }: TransportCost
             <Text className="mb-1">Descripción</Text>
             <TextInput 
               placeholder="Detalles adicionales..." 
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              {...register('description')}
             />
           </div>
 
@@ -159,14 +175,20 @@ export function TransportCostModal({ isOpen, onClose, onSuccess }: TransportCost
             <Button variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
-            <Button 
-              loading={createCost.isPending} 
-              icon={Truck}
-              type="submit"
-              color="orange"
-            >
-              Guardar Gasto
-            </Button>
+            <Can action={Action.Create} subject="TransportCost" fallback={
+              <Button disabled color="gray">
+                Sin permisos
+              </Button>
+            }>
+              <Button 
+                loading={createCost.isPending} 
+                icon={Truck}
+                type="submit"
+                color="orange"
+              >
+                Guardar Gasto
+              </Button>
+            </Can>
           </div>
         </form>
       </DialogPanel>

@@ -21,7 +21,8 @@ export class TrpcAuthMiddleware implements NestMiddleware {
           ...user,
           companyId: permissions?.companyId,
         };
-      } catch {
+      } catch (error) {
+        console.error('Error verifying JWT in tRPC Middleware:', error instanceof Error ? error.message : error);
         // Sin usuario: protectedProcedure responderá UNAUTHORIZED
       }
     }

@@ -19,7 +19,7 @@ export class TransportService {
   // --- CRUD Vehicles ---
   async getVehicles(companyId: string) {
     return this.prisma.vehicle.findMany({
-      where: { companyId, isActive: true },
+      where: { companyId, status: 'active' },
     });
   }
 

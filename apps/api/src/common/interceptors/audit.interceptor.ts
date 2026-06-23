@@ -17,7 +17,7 @@ export class AuditInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
-    const { method, url, body, user } = request;
+    const { method, url, body, user, ip } = request;
 
     // Solo auditar métodos que modifican datos
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -25,30 +25,33 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     return next.handle().pipe(
-      tap(async (data) => {
-        try {
-          const entityType = this.extractEntityType(url);
-          
-          await this.prisma.auditLog.create({
-            data: {
-              userId: user?.id || null,
-              action: method,
-              entityType,
-              entityId: data?.id?.toString() || body?.id?.toString() || null,
-              newValues: body || {},
-              ipAddress: request.ip,
-              userAgent: request.headers['user-agent'],
-            },
-          });
-        } catch (error) {
-          this.logger.error(`Error saving audit log: ${error.message}`);
-        }
+      tap({
+        next: async (data) => {
+          try {
+            const entityType = this.extractEntityType(url);
+            
+            await this.prisma.auditLog.create({
+              data: {
+                userId: user?.id || null,
+                action: method,
+                entityType,
+                entityId: data?.id?.toString() || body?.id?.toString() || null,
+                newValues: body ? JSON.parse(JSON.stringify(body)) : {},
+                ipAddress: ip || request.headers['x-forwarded-for'] || request.connection.remoteAddress,
+                userAgent: request.headers['user-agent'] || 'unknown',
+              },
+            });
+          } catch (error) {
+            this.logger.error(`Error saving audit log: ${error.message}`);
+          }
+        },
       }),
     );
   }
 
   private extractEntityType(url: string): string {
-    const parts = url.split('/');
-    return parts[2] || 'unknown'; // Ajustar según estructura de rutas
+    const parts = url.split('?')[0].split('/');
+    // Asumiendo /api/v1/resource o /resource
+    return parts.length > 2 ? parts[2] : parts[1] || 'unknown';
   }
 }

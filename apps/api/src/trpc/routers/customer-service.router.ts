@@ -67,6 +67,7 @@ export const customerServiceRouter = router({
     .query(async ({ ctx }) => {
       return ctx.prisma.customer.findMany({
         where: { companyId: ctx.user.companyId, isActive: true },
+        orderBy: { name: 'asc' },
       });
     }),
 });

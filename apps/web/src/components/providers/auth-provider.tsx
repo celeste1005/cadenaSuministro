@@ -9,12 +9,32 @@ import React, {
 } from 'react';
 import { useRouter } from 'next/navigation';
 
+export enum Action {
+  Manage = 'manage',
+  Create = 'create',
+  Read = 'read',
+  Update = 'update',
+  Delete = 'delete',
+}
+
+export type Subject = 
+  | 'User' | 'Role' | 'Company' | 'Branch' | 'Supplier' | 'Product' 
+  | 'Warehouse' | 'Location' | 'Machine' | 'Vehicle' | 'Employee' 
+  | 'PurchaseOrder' | 'Sale' | 'InventoryMovement' | 'Dispatch' 
+  | 'ProductionRecord' | 'OperationalCost' | 'TransportCost' | 'Kpi' | 'Report'
+  | 'PhysicalInventory' | 'ImportExportRecord'
+  | 'all';
+
 export interface AuthUser {
   id: string;
   email: string;
   fullName: string;
   role: string;
   companyId?: string | null;
+  permissions?: {
+    modules?: string[];
+    kpis?: string[];
+  };
 }
 
 interface AuthContextType {
@@ -23,6 +43,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  can: (action: Action, subject: Subject) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -74,8 +95,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.refresh();
   }, [router]);
 
+  const can = useCallback((action: Action, subject: Subject): boolean => {
+    if (!user) return false;
+
+    // Role-based permissions (simplified version matching backend CASL)
+    switch (user.role) {
+      case 'ADMIN':
+      case 'SUPER_ADMIN':
+        return true; // Can do everything
+
+      case 'PURCHASING_MANAGER':
+        if (subject === 'PurchaseOrder' || subject === 'Supplier') return true;
+        if (action === Action.Read && subject === 'Product') return true;
+        return false;
+
+      case 'WAREHOUSE_MANAGER':
+        if (subject === 'Warehouse' || subject === 'InventoryMovement' || subject === 'Dispatch' || subject === 'PhysicalInventory') return true;
+        if (action === Action.Read && subject === 'Product') return true;
+        return false;
+
+      case 'OPERATIONS_MANAGER':
+        if (subject === 'ProductionRecord' || subject === 'Machine') return true;
+        return false;
+
+      default:
+        // Guest/Basic user - only read access
+        return action === Action.Read;
+    }
+  }, [user]);
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, refresh }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, refresh, can }}>
       {children}
     </AuthContext.Provider>
   );

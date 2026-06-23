@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Title, 
   Text, 
@@ -24,12 +24,16 @@ import {
 import { trpc } from '@/lib/trpc/react';
 import { KPICard } from '@/components/ui/kpi-card';
 import { PendingApprovalsTable } from '@/components/dashboard/pending-approvals-table';
+import { PurchaseOrderModal } from '@/components/purchasing/purchase-order-modal';
 
 export default function PurchasingPage() {
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [selectedPeriod] = React.useState({
     startDate: new Date(new Date().getFullYear(), 0, 1),
     endDate: new Date(),
   });
+
+  const utils = trpc.useUtils();
 
   // Consultas a tRPC
   const { data: suppliers } = trpc.purchasing.getSuppliers.useQuery();
@@ -38,17 +42,32 @@ export default function PurchasingPage() {
     ...selectedPeriod,
   });
 
+  const handleOrderSuccess = () => {
+    utils.purchasing.getPurchaseOrders.invalidate();
+  };
+
   return (
-    <main className="p-6 sm:p-10">
-      <Flex justifyContent="between" alignItems="center">
-        <div>
-          <Title>Gestión de Compras</Title>
-          <Text>Control de suministros, proveedores e indicadores de abastecimiento.</Text>
+    <main className="p-4 sm:p-6 lg:p-10">
+      <Flex justifyContent="between" alignItems="center" flexDirection="col" className="sm:flex-row space-y-4 sm:space-y-0">
+        <div className="text-center sm:text-left">
+          <Title className="text-2xl font-bold">Gestión de Compras</Title>
+          <Text className="text-gray-500">Control de suministros, proveedores e indicadores de abastecimiento.</Text>
         </div>
-        <Button icon={PlusCircle} size="sm">
+        <Button 
+          icon={PlusCircle} 
+          size="sm"
+          className="w-full sm:w-auto"
+          onClick={() => setIsOrderModalOpen(true)}
+        >
           Nueva Orden de Compra
         </Button>
       </Flex>
+
+      <PurchaseOrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        onSuccess={handleOrderSuccess}
+      />
 
       <Grid numItemsMd={2} numItemsLg={4} className="gap-6 mt-6">
         <KPICard

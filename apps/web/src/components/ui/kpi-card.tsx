@@ -34,11 +34,6 @@
    sparklineData?: { value: number }[];
  } 
 
- // Datos de ejemplo para el sparkline si no se proporcionan
- const defaultSparklineData = [
-   { value: 40 }, { value: 30 }, { value: 45 }, { value: 50 }, 
-   { value: 35 }, { value: 60 }, { value: 55 }, { value: 70 }
- ];
  
  export const KPICard: React.FC<KPICardProps> = ({ 
    title, 
@@ -56,7 +51,7 @@
    subtitle, 
    trend = 1.2, 
    trendLabel = 'vs periodo anterior', 
-   sparklineData = defaultSparklineData,
+   sparklineData,
  }) => { 
    
    const getStatusColor = () => { 

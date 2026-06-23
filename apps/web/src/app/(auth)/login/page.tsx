@@ -1,31 +1,50 @@
 'use client';
 
-import React, { FormEvent, Suspense, useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '../../../components/providers/auth-provider';
+
+const loginSchema = z.object({
+  email: z.string().email('Email inválido').min(1, 'El email es obligatorio'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 function LoginForm() {
   const searchParams = useSearchParams();
   const { login } = useAuth();
-  const [email, setEmail] = useState('admin@demo.local');
-  const [password, setPassword] = useState('demo123');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: 'admin@demo.local',
+      password: 'demo123',
+    },
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
     setError(null);
     setSubmitting(true);
     try {
-      await login(email.trim(), password);
+      await login(data.email.trim(), data.password);
       const from = searchParams.get('from') || '/dashboard';
       window.location.assign(from);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
       setSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -34,7 +53,7 @@ function LoginForm() {
         <p className="mt-2 text-sm text-gray-600">BI Logístico - ProyectoCD</p>
       </div>
 
-      <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+      <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
         {error && (
           <div
             role="alert"
@@ -49,16 +68,16 @@ function LoginForm() {
           </label>
           <input
             id="email"
-            name="email"
-            type="text"
-            inputMode="email"
-            autoComplete="username"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+            type="email"
+            {...register('email')}
+            className={`mt-1 block w-full border ${
+              errors.email ? 'border-red-500' : 'border-gray-300'
+            } rounded-md shadow-sm p-2 text-gray-900`}
             placeholder="admin@demo.local"
           />
+          {errors.email && (
+            <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
+          )}
         </div>
         <div>
           <label htmlFor="password" className="block text-sm font-medium text-gray-700">
@@ -66,14 +85,15 @@ function LoginForm() {
           </label>
           <input
             id="password"
-            name="password"
             type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-gray-900"
+            {...register('password')}
+            className={`mt-1 block w-full border ${
+              errors.password ? 'border-red-500' : 'border-gray-300'
+            } rounded-md shadow-sm p-2 text-gray-900`}
           />
+          {errors.password && (
+            <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
+          )}
         </div>
         <button
           type="submit"

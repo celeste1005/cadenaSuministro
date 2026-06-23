@@ -4,6 +4,46 @@ import { Action } from '../../modules/auth/casl-ability.factory';
 import { TRPCError } from '@trpc/server';
 
 export const purchasingRouter = router({
+  // Obtener proveedores
+  getSuppliers: protectedProcedure
+    .query(async ({ ctx }) => {
+      return ctx.purchasingService.getSuppliers(ctx.user.companyId);
+    }),
+
+  // Obtener todas las órdenes de compra
+  getPurchaseOrders: protectedProcedure
+    .query(async ({ ctx }) => {
+      return ctx.purchasingService.getPurchaseOrders(ctx.user.companyId);
+    }),
+
+  // Crear una orden de compra
+  createPurchaseOrder: protectedProcedure
+    .input(z.object({
+      supplierId: z.string().uuid(),
+      poNumber: z.string(),
+      orderDate: z.date(),
+      expectedDeliveryDate: z.date(),
+      totalAmount: z.number(),
+      status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const ability = ctx.caslAbilityFactory.createForUser(ctx.user);
+      
+      if (!ability.can(Action.Create, 'PurchaseOrder')) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'No tienes permisos para crear órdenes de compra',
+        });
+      }
+
+      return ctx.purchasingService.createPurchaseOrder(
+        ctx.user.companyId,
+        ctx.user.id,
+        input
+      );
+    }),
+
   // Obtener órdenes de compra pendientes de aprobación
   getPendingApprovals: protectedProcedure
     .query(async ({ ctx }) => {
