@@ -1,41 +1,48 @@
-import { Injectable, Logger } from '@nestjs/common'; 
- import * as puppeteer from 'puppeteer'; 
- import * as Handlebars from 'handlebars'; 
- import { readFileSync } from 'fs'; 
- import { join } from 'path'; 
-  
- @Injectable() 
- export class PdfGeneratorService { 
-   private readonly logger = new Logger(PdfGeneratorService.name); 
-    
-   async generateTransportVsSalesReport(data: { 
-     year: number; 
-     monthlyData: Array<{ 
-       month: string; 
-       transportCost: number; 
-       totalSales: number; 
-       percentage: number; 
-     }>; 
-     summary: { 
-       totalTransportCost: number; 
-       totalSales: number; 
-       averagePercentage: number; 
-       trend: 'up' | 'down' | 'stable'; 
-     }; 
-     companyInfo: { 
-       name: string; 
-       logo: string; 
-       address: string; 
-     }; 
-     generatedBy: string; 
-   }): Promise<Buffer> { 
-     this.logger.log(`Generating PDF report for Transport vs Sales KPI - Year ${data.year}`); 
-      
-     // 1. Cargar template HTML 
-     const templateHtml = readFileSync( 
-       join(__dirname, 'templates', 'transport-vs-sales.hbs'), 
-       'utf8' 
-     ); 
+import { Injectable, Logger } from '@nestjs/common';
+import * as puppeteer from 'puppeteer';
+import * as Handlebars from 'handlebars';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+
+@Injectable()
+export class PdfGeneratorService {
+  private readonly logger = new Logger(PdfGeneratorService.name);
+
+  private loadTemplate(name: string): string {
+    // In dev mode (nest start --watch), templates are in src/, not dist/
+    const distPath = join(__dirname, 'templates', name);
+    const srcPath = join(__dirname, '..', '..', '..', '..', 'src', 'modules', 'reports', 'pdf', 'templates', name);
+    if (existsSync(distPath)) {
+      return readFileSync(distPath, 'utf8');
+    }
+    return readFileSync(srcPath, 'utf8');
+  }
+
+  async generateTransportVsSalesReport(data: {
+    year: number;
+    monthlyData: Array<{
+      month: string;
+      transportCost: number;
+      totalSales: number;
+      percentage: number;
+    }>;
+    summary: {
+      totalTransportCost: number;
+      totalSales: number;
+      averagePercentage: number;
+      trend: 'up' | 'down' | 'stable';
+    };
+    companyInfo: {
+      name: string;
+      logo: string;
+      address: string;
+    };
+    generatedBy: string;
+  }): Promise<Buffer> {
+    this.logger.log(`Generating PDF report for Transport vs Sales KPI - Year ${data.year}`);
+
+    // 1. Cargar template HTML
+    const templateHtml = this.loadTemplate('transport-vs-sales.hbs');
       
      // 2. Registrar helpers de Handlebars 
      if (!Handlebars.helpers.formatCurrency) {
@@ -121,8 +128,11 @@ import { Injectable, Logger } from '@nestjs/common';
      return Buffer.from(pdf); 
    } 
     
-   private async generateChartImage(monthlyData: any[]): Promise<string> { 
-     const browser = await puppeteer.launch({ headless: true }); 
+    private async generateChartImage(monthlyData: any[]): Promise<string> { 
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
      const page = await browser.newPage(); 
       
      // HTML con Chart.js para renderizar el gráfico 

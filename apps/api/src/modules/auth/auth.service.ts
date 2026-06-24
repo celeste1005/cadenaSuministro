@@ -32,6 +32,14 @@ export class AuthService {
       email: user.email,
       role: user.role.name,
     };
+    console.log('AuthService.login - JWT_SECRET:', process.env.JWT_SECRET);
+    console.log('AuthService.login - payload:', JSON.stringify(payload));
+    const jwtOpts = (this.jwtService as any).options;
+    console.log('AuthService.login - jwtOptions keys:', Object.keys(jwtOpts || {}));
+    if (jwtOpts) {
+      console.log('AuthService.login - jwtOptions.secret:', jwtOpts.secret);
+      console.log('AuthService.login - jwtOptions.privateKey:', jwtOpts.privateKey);
+    }
     return {
       access_token: this.jwtService.sign(payload),
       user: {

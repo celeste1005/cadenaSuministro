@@ -1,0 +1,55 @@
+.pdf-export-header {
+  text-align: center;
+  padding: 24px 0 16px;
+  border-bottom: 2px solid #1e40af;
+  margin-bottom: 20px;
+}
+
+.pdf-export-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.pdf-export-header .subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.pdf-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.pdf-summary-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+.pdf-summary-card .value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.pdf-summary-card .label {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.pdf-summary-card.success .value { color: #059669; }
+.pdf-summary-card.warning .value { color: #d97706; }
+.pdf-summary-card.danger .value { color: #dc2626; }
+
+@media print {
+  .pdf-export-header { break-after: avoid; }
+  .pdf-section { break-inside: avoid; page-break-inside: avoid; }
+}

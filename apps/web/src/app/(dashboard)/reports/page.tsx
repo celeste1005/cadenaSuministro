@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
-import { 
-  Title, 
-  Text, 
-  Card, 
-  Grid, 
-  Button, 
+import React, { useState } from 'react';
+import {
+  Title,
+  Text,
+  Card,
+  Grid,
+  Button,
   Flex,
   Table,
   TableHead,
@@ -14,23 +14,34 @@ import {
   TableHeaderCell,
   TableBody,
   TableCell,
-  Badge
+  Badge,
 } from '@tremor/react';
-import { 
-  FileText, 
-  Download, 
-  Calendar, 
+import {
+  FileText,
+  Download,
+  Calendar,
   Filter,
   FileDown,
-  Printer
+  Printer,
+  PieChart,
+  BarChart3,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
 } from 'lucide-react';
+import { trpc } from '../../../lib/trpc/react';
+import { ExportButton } from '../../../components/reports/export-button';
+import { ReportGeneratorModal } from '../../../components/reports/report-generator-modal';
 
 export default function ReportsPage() {
-  const reports = [
-    { id: 1, name: 'Reporte Mensual de KPIs - Mayo 2024', date: '2024-05-31', type: 'PDF', status: 'Listo' },
-    { id: 2, name: 'Análisis de Costos de Transporte Q1', date: '2024-04-15', type: 'Excel', status: 'Listo' },
-    { id: 3, name: 'Auditoría de Inventarios CEDI Norte', date: '2024-03-20', type: 'PDF', status: 'Archivado' },
-  ];
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const { data: categories } = trpc.report.getCategories.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
 
   return (
     <main className="p-4 sm:p-6 lg:p-10">
@@ -41,79 +52,155 @@ export default function ReportsPage() {
         </div>
         <div className="flex space-x-2 w-full sm:w-auto">
           <Button icon={Filter} variant="secondary" size="sm" className="flex-1 sm:flex-none">Filtrar</Button>
-          <Button icon={FileDown} size="sm" className="flex-1 sm:flex-none">Nuevo Reporte</Button>
+          <Button icon={FileDown} size="sm" className="flex-1 sm:flex-none" onClick={() => setModalOpen(true)}>
+            Nuevo Reporte
+          </Button>
         </div>
       </Flex>
 
-      <Grid numItemsSm={1} numItemsMd={2} className="gap-6 mt-8">
+      <Grid numItemsSm={1} numItemsMd={2} numItemsLg={3} className="gap-6 mt-8">
         <Card decoration="top" decorationColor="blue">
-          <Flex alignItems="start">
-            <div className="flex-1">
-              <Text className="font-medium">Último Reporte Generado</Text>
-              <Title className="mt-1">Indicadores de Gestión Mayo</Title>
-              <Text className="text-sm text-gray-400 mt-1">Generado hace 2 horas por Admin</Text>
+          <Flex alignItems="start" justifyContent="between">
+            <div>
+              <Text className="font-medium">Reporte Completo de KPIs</Text>
+              <Text className="text-sm text-gray-400 mt-1">28 indicadores logísticos agrupados por categoría</Text>
             </div>
-            <Badge icon={FileText} color="blue">PDF</Badge>
+            <BarChart3 className="h-6 w-6 text-blue-500 shrink-0" />
           </Flex>
-          <div className="mt-6 flex space-x-2">
-            <Button size="xs" variant="primary" icon={Download} className="flex-1">Descargar</Button>
-            <Button size="xs" variant="secondary" icon={Printer} className="flex-1">Imprimir</Button>
+          <Flex className="mt-4 space-x-2">
+            <ExportButton
+              endpoint={`/reports/full-kpi?period=monthly&year=${currentYear}&month=${currentMonth}`}
+              filename={`reporte-kpis-mensual-${currentYear}.pdf`}
+              label="Mensual"
+              variant="primary"
+              className="flex-1"
+            />
+            <ExportButton
+              endpoint={`/reports/comparative?year=${currentYear}`}
+              filename={`reporte-comparativo-${currentYear - 1}-vs-${currentYear}.pdf`}
+              label="Comparativo"
+              variant="secondary"
+              className="flex-1"
+            />
+          </Flex>
+        </Card>
+
+        <Card decoration="top" decorationColor="emerald">
+          <Flex alignItems="start" justifyContent="between">
+            <div>
+              <Text className="font-medium">Costo Transporte vs Ventas</Text>
+              <Text className="text-sm text-gray-400 mt-1">Análisis mensual de eficiencia en transporte</Text>
+            </div>
+            <TrendingUp className="h-6 w-6 text-emerald-500 shrink-0" />
+          </Flex>
+          <div className="mt-4">
+            <ExportButton
+              endpoint={`/reports/transport-kpi?year=${currentYear}`}
+              filename={`reporte-transporte-${currentYear}.pdf`}
+              label="Descargar Reporte"
+              variant="primary"
+              className="w-full"
+            />
           </div>
         </Card>
-        
-        <Card decoration="top" decorationColor="emerald">
-          <Flex alignItems="start">
-             <div className="flex-1">
-              <Text className="font-medium">Programación Automática</Text>
-              <Title className="mt-1">Reporte Semanal de Rutas</Title>
-              <Text className="text-sm text-gray-400 mt-1">Próxima ejecución: Lunes 08:00 AM</Text>
+
+        <Card decoration="top" decorationColor="violet">
+          <Flex alignItems="start" justifyContent="between">
+            <div>
+              <Text className="font-medium">Cobertura de Indicadores</Text>
+              <Text className="text-sm text-gray-400 mt-1">
+                {categories ? `${categories.length} categorías disponibles` : 'Cargando...'}
+              </Text>
             </div>
-            <Calendar className="h-6 w-6 text-emerald-500" />
+            <PieChart className="h-6 w-6 text-violet-500 shrink-0" />
           </Flex>
-          <div className="mt-6">
-            <Button size="xs" variant="secondary" className="w-full">Gestionar Programación</Button>
+          <div className="mt-4 space-y-1.5">
+            {categories?.slice(0, 4).map((cat) => (
+              <Flex key={cat.code} justifyContent="between" className="text-sm">
+                <Flex alignItems="center" className="space-x-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                  <span>{cat.name}</span>
+                </Flex>
+                <span className="font-medium text-gray-600">{cat.count} KPIs</span>
+              </Flex>
+            ))}
+            {categories && categories.length > 4 && (
+              <Text className="text-xs text-gray-400 text-center mt-2">
+                +{categories.length - 4} categorías más
+              </Text>
+            )}
           </div>
         </Card>
       </Grid>
 
       <Card className="mt-8 p-0 sm:p-6 overflow-hidden">
         <div className="p-4 sm:p-0">
-          <Title>Historial de Informes</Title>
-          <Text>Consulta y descarga reportes generados anteriormente.</Text>
+          <Title>Reportes Rápidos</Title>
+          <Text>Acceso directo a los reportes más utilizados del sistema.</Text>
         </div>
         <div className="overflow-x-auto mt-4">
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeaderCell>Nombre del Informe</TableHeaderCell>
-                <TableHeaderCell>Fecha</TableHeaderCell>
-                <TableHeaderCell>Formato</TableHeaderCell>
-                <TableHeaderCell>Estado</TableHeaderCell>
+                <TableHeaderCell>Reporte</TableHeaderCell>
+                <TableHeaderCell>Tipo</TableHeaderCell>
+                <TableHeaderCell>Categorías</TableHeaderCell>
                 <TableHeaderCell className="text-right">Acción</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {reports.map((report) => (
-                <TableRow key={report.id}>
-                  <TableCell className="font-medium">{report.name}</TableCell>
-                  <TableCell>{report.date}</TableCell>
-                  <TableCell>{report.type}</TableCell>
-                  <TableCell>
-                    <Badge color={report.status === 'Listo' ? 'emerald' : 'gray'}>
-                      {report.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button size="xs" variant="light" icon={Download}>
-                      Descargar
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              <TableRow>
+                <TableCell className="font-medium">Reporte Mensual de KPIs</TableCell>
+                <TableCell><Badge color="blue">PDF</Badge></TableCell>
+                <TableCell>Todas las categorías</TableCell>
+                <TableCell className="text-right">
+                  <ExportButton
+                    endpoint={`/reports/full-kpi?period=monthly&year=${currentYear}&month=${currentMonth}`}
+                    filename={`reporte-kpis-${currentYear}-${currentMonth}.pdf`}
+                    label="Mensual"
+                    variant="light"
+                  />
+                  <ExportButton
+                    endpoint={`/reports/full-kpi?period=annual&year=${currentYear}`}
+                    filename={`reporte-kpis-anual-${currentYear}.pdf`}
+                    label="Anual"
+                    variant="light"
+                    className="ml-2"
+                  />
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Análisis Comparativo Anual</TableCell>
+                <TableCell><Badge color="violet">PDF</Badge></TableCell>
+                <TableCell>Todas las categorías</TableCell>
+                <TableCell className="text-right">
+                  <ExportButton
+                    endpoint={`/reports/comparative?year=${currentYear}`}
+                    filename={`reporte-comparativo-${currentYear - 1}-vs-${currentYear}.pdf`}
+                    label={`${currentYear - 1} vs ${currentYear}`}
+                    variant="light"
+                  />
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Costo Transporte vs Ventas</TableCell>
+                <TableCell><Badge color="emerald">PDF</Badge></TableCell>
+                <TableCell>Transporte y Distribución</TableCell>
+                <TableCell className="text-right">
+                  <ExportButton
+                    endpoint={`/reports/transport-kpi?year=${currentYear}`}
+                    filename={`reporte-transporte-${currentYear}.pdf`}
+                    label="Descargar"
+                    variant="light"
+                  />
+                </TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </div>
       </Card>
+
+      <ReportGeneratorModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </main>
   );
 }

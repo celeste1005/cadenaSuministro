@@ -7,7 +7,8 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": ["JWT_SECRET", "DATABASE_URL", "REDIS_HOST", "REDIS_PORT", "PORT", "API_URL", "NEXT_PUBLIC_API_URL"]
     },
     "lint": {},
     "test": {},

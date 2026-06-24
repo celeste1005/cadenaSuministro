@@ -6,6 +6,10 @@ export async function POST(request: Request) {
   const email = String(body.email ?? '').trim();
   const password = String(body.password ?? '');
 
+  console.log('DEBUG: getApiBaseUrl() =>', getApiBaseUrl());
+  console.log('DEBUG: process.env.API_URL =>', process.env.API_URL);
+  console.log('DEBUG: process.env.NEXT_PUBLIC_API_URL =>', process.env.NEXT_PUBLIC_API_URL);
+
   if (!email || !password) {
     return NextResponse.json(
       { message: 'Email y contraseña son obligatorios' },
@@ -15,12 +19,16 @@ export async function POST(request: Request) {
 
   let apiRes: Response;
   try {
-    apiRes = await fetch(`${getApiBaseUrl()}/auth/login`, {
+    const apiUrl = `${getApiBaseUrl()}/auth/login`;
+    console.log('DEBUG: Calling API at', apiUrl);
+    apiRes = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-  } catch {
+    console.log('DEBUG: API response status:', apiRes.status);
+  } catch (e) {
+    console.error('DEBUG: Error calling API:', e);
     return NextResponse.json(
       {
         message:

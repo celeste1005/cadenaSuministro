@@ -7,7 +7,7 @@ async function bootstrap() {
 
   // Habilitar CORS para el frontend
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
@@ -19,11 +19,8 @@ async function bootstrap() {
     forbidNonWhitelisted: true,
   }));
 
-  // Aplicar el middleware de tRPC si es necesario
-  // Nota: En esta arquitectura, el TrpcRouter se suele registrar en TrpcModule
-  
   const port = process.env.PORT || 4000;
-  await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Application is running on: http://0.0.0.0:${port}`);
 }
 bootstrap();

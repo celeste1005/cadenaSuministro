@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte Comparativo - {{year}} vs {{previousYear}}</title>
+  <style>
+    {{reportCss}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      {{#if companyInfo.logo}}
+        <img class="logo" src="{{companyInfo.logo}}" alt="Logo">
+      {{/if}}
+      <div class="company-name">{{companyInfo.name}}</div>
+      <div class="report-title">Análisis Comparativo Anual</div>
+      <div class="report-subtitle">Evolución de indicadores {{previousYear}} vs {{year}}</div>
+    </div>
+
+    <div class="metadata-bar">
+      <span><strong>Período:</strong> {{previousYear}} - {{year}}</span>
+      <span><strong>Generado:</strong> {{generatedAt}}</span>
+      <span><strong>Por:</strong> {{generatedBy}}</span>
+    </div>
+
+    <h3 style="margin: 15px 0 8px; font-size: 11pt;">Resumen Anual</h3>
+    <div class="summary-cards">
+      <div class="card blue">
+        <div class="card-title">KPIs que mejoraron</div>
+        <div class="card-value">{{improvedCount}}</div>
+        <div class="card-subtitle">vs {{previousYear}}</div>
+      </div>
+      <div class="card orange">
+        <div class="card-title">KPIs que empeoraron</div>
+        <div class="card-value">{{worsenedCount}}</div>
+        <div class="card-subtitle">vs {{previousYear}}</div>
+      </div>
+      <div class="card green">
+        <div class="card-title">Estables</div>
+        <div class="card-value">{{stableCount}}</div>
+        <div class="card-subtitle">Sin cambios significativos</div>
+      </div>
+    </div>
+
+    <h3 class="section-title">Comparativa por Indicador</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Indicador</th>
+          <th>{{previousYear}}</th>
+          <th>{{year}}</th>
+          <th>Variación</th>
+          <th>Tendencia</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each annualComparison}}
+        <tr>
+          <td><strong>{{code}}</strong></td>
+          <td style="text-align: left;">{{name}}</td>
+          <td>{{formatKpiValue previousYearValue unit}}</td>
+          <td>{{formatKpiValue currentYearValue unit}}</td>
+          <td class="{{#if (gt variance 0)}}trend-up{{else}}trend-down{{/if}}">
+            {{variance}}%
+          </td>
+          <td>
+            {{#if (gt variance 5)}}▲{{else if (lt variance -5)}}▼{{else}}➡{{/if}}
+          </td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+
+    <h3 class="section-title">Evolución Mensual Comparada</h3>
+    <div class="chart-container">
+      <img class="chart-image" src="{{monthlyChartImage}}" alt="Comparativa mensual">
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Mes</th>
+          <th>{{previousYear}}</th>
+          <th>{{year}}</th>
+          <th>Diferencia</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each monthlyComparison}}
+        <tr>
+          <td><strong>{{month}}</strong></td>
+          <td>{{previousYear}}</td>
+          <td>{{currentYear}}</td>
+          <td class="{{#if (gt diff 0)}}trend-up{{else}}trend-down{{/if}}">
+            {{diff}}%
+          </td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <p>Análisis comparativo generado por SCILIP - Sistema de Control de Indicadores Logísticos</p>
+      <p>© {{year}} {{companyInfo.name}} - Reporte institucional de gestión</p>
+    </div>
+  </div>
+</body>
+</html>
